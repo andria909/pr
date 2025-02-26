@@ -1,0 +1,22 @@
+# Исполняемые файлы и объектные файлы
+*.o
+*.exe
+*.out
+*.a
+*.lib
+*.so
+*.dll
+
+# Каталоги сборки
+build/
+cmake-build-debug/
+CMakeFiles/
+
+# Файлы IDE
+.vscode/
+.idea/
+*.iml
+
+# Логи
+*.log
+
