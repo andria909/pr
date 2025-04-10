@@ -1,6 +1,8 @@
-#include "utils.h"
-#include <boost/multiprecision/cpp_dec_float.hpp>
-#include <boost/multiprecision/cpp_int.hpp>
+#include "fft.h"
+#include "longnum.h"
+#include "math.h"
+#include "matrix_solver.h"
+#include "random.h"
 #include <chrono>
 #include <cmath>
 #include <cstdlib>
@@ -11,29 +13,27 @@
 #include <utility>
 #include <vector>
 
-using namespace boost::multiprecision;
-
-namespace {
+namespace bpm {
 
 enum class TestStatus : int {
   Prime,
   Composite,
   ProbablyPrime,
   ProbablyComposite
-
 };
 
-TestStatus fermat_test(const cpp_int &n, const cpp_int &k, Random &ferma) {
+TestStatus ferma_test(const LongInt &n, const LongInt &k) {
+  Random ferma(true);
   if (n == 1) {
     return TestStatus::Composite;
   }
   if (n < 1)
     throw std::invalid_argument("Аргументы должны быть >= 1");
   if (n <= 3)
-    return TestStatus::Prime;
-  for (cpp_int i = 0; i < k; ++i) {
-    cpp_int a = ferma.uniform(2, n - 4);
-    cpp_int x = fast_pow(a, n - 1, n);
+    return TestStatus::ProbablyPrime;
+  for (LongInt i = 0; i < k; ++i) {
+    LongInt a = ferma.uniform(2, n - 2);
+    LongInt x = fast_pow(a, n - 1, n);
     if (x != 1) {
       return TestStatus::Composite;
     }
@@ -41,18 +41,18 @@ TestStatus fermat_test(const cpp_int &n, const cpp_int &k, Random &ferma) {
   return TestStatus::ProbablyPrime;
 }
 
-TestStatus solovay_shtressen_test(const cpp_int &n, const cpp_int &k,
-                                  Random &solovay) {
+TestStatus solovay_shtressen_test(const LongInt &n, const LongInt &k) {
+  Random solovay(true);
   if (n == 1) {
     return TestStatus::Composite;
   }
   if (n < 1)
     throw std::invalid_argument("Аргументы должны быть >= 1");
   if (n <= 3)
-    return TestStatus::Prime;
+    return TestStatus::ProbablyPrime;
 
-  for (cpp_int i = 0; i < k; ++i) {
-    cpp_int a = solovay.uniform(2, n - 4);
+  for (LongInt i = 0; i < k; ++i) {
+    LongInt a = solovay.uniform(2, n - 4);
     if (gcd(a, n) > 1) {
       return TestStatus::Composite;
     }
@@ -63,21 +63,21 @@ TestStatus solovay_shtressen_test(const cpp_int &n, const cpp_int &k,
   return TestStatus::ProbablyPrime;
 }
 
-TestStatus miller_rabin_test(const cpp_int &n, const cpp_int &k,
-                             Random &miller) {
+TestStatus miller_rabin_test(const LongInt &n, const LongInt &k) {
+  Random miller(true);
   if (n == 1) {
     return TestStatus::Composite;
   }
   if (n < 1)
     throw std::invalid_argument("Аргументы должны быть >= 1");
   if (n <= 3)
-    return TestStatus::Prime;
+    return TestStatus::ProbablyPrime;
 
-  cpp_int t = n - 1;
-  cpp_int s = make_free_of(2, t);
-  for (cpp_int i = 0; i < k; ++i) {
-    cpp_int a = miller.uniform(2, n - 4);
-    cpp_int x = fast_pow(a, t, n);
+  LongInt t = n - 1;
+  LongInt s = make_free_of(2, t);
+  for (LongInt i = 0; i < k; ++i) {
+    LongInt a = miller.uniform(2, n - 4);
+    LongInt x = fast_pow(a, t, n);
 
     if (x != 1 && x != n - 1) {
       bool fl = true;
@@ -95,7 +95,7 @@ TestStatus miller_rabin_test(const cpp_int &n, const cpp_int &k,
   return TestStatus::ProbablyPrime;
 }
 
-TestStatus aks_test(cpp_int n) {
+TestStatus aks_test(LongInt n) {
   if (n == 1) {
     return TestStatus::Composite;
   }
@@ -106,23 +106,22 @@ TestStatus aks_test(cpp_int n) {
   if (is_perfect_pow(n))
     return TestStatus::Composite;
 
-  cpp_int r = find_smallest_r(n);
-  for (cpp_int a = 2; a <= r; ++a) {
+  LongInt r = find_smallest_ord(n);
+  for (LongInt a = 2; a <= r; ++a) {
     if (!(gcd(a, n) == 1 || gcd(a, n) == n))
       return TestStatus::Composite;
   }
   if (n <= r)
-    return TestStatus::ProbablyPrime;
-  cpp_int limit = sqrt(phi(r)) * log2(n);
-  for (cpp_int a = 1; a <= limit; ++a) {
-    if (fast_pow(a, n - 1, n) != 1)
+    return TestStatus::Prime;
+  LongInt limit = sqrt(phi(r)) * log2(n);
+  for (LongInt a = 1; a <= limit; ++a) {
+    if (!check_congruence(a, n, r))
       return TestStatus::Composite;
   }
-  return TestStatus::ProbablyPrime;
+  return TestStatus::Prime;
 }
 
-TestStatus factorization_test(const cpp_int &n) {
-
+TestStatus factorization_test(const LongInt &n) {
   if (n == 1) {
     return TestStatus::Composite;
   }
@@ -131,44 +130,47 @@ TestStatus factorization_test(const cpp_int &n) {
   if (n <= 3)
     return TestStatus::Prime;
 
-  std::unordered_map<cpp_int, cpp_int> f;
-  std::unordered_map<cpp_int, std::vector<bool>> vec_fact;
+  std::vector<LongInt> args = compute_args(static_cast<LongDouble>(n));
 
-  cpp_int T = (sqrt(n) / 1 == sqrt(n)) ? sqrt(n) : sqrt(n) / 1 + 1;
+  LongInt T = args[0];
 
-  cpp_int A = formula(static_cast<cpp_dec_float_50>(n));
+  LongInt A = args[1];
 
-  cpp_int P = static_cast<int>(sqrt(A)) * 4;
+  LongInt P = args[2];
 
-  std::vector<cpp_int> S = make_base(P, n);
+  std::vector<LongInt> S = make_base(P, n);
   if (S[0] == -1) {
     return TestStatus::Composite;
   }
+  
+  std::unordered_map<LongInt, LongInt> f;
+  std::unordered_map<LongInt, std::vector<bool>> vec_fact;
 
-  for (cpp_int i = 0; i < A; ++i) {
-    cpp_int x = T + i;
-    f[x] = x * x - n;
-    vec_fact[x].resize(S.size());
-  }
-  std::unordered_map<cpp_int, cpp_int> new_f = f;
+  creating_objects(f, vec_fact, A, T, n, S.size());
+
+
+  std::unordered_map<LongInt, LongInt> new_f = f;
   decomposition(f, vec_fact, S);
-  std::vector<std::vector<bool>> Matrix;
-
-  std::unordered_map<int, cpp_int> mapp;
+  std::vector<int> Matrix;
+  std::unordered_map<int, LongInt> mapp;
   int num_ones = 0;
   for (auto &[x, f_x] : f) {
     if (f[x] == 1) {
       mapp[num_ones] = x;
-      Matrix.push_back(vec_fact[x]);
+      for (int i = 0; i < vec_fact[x].size(); ++i) {
+        Matrix.push_back(vec_fact[x][i]);
+      }
       ++num_ones;
     }
   }
 
-  std::vector<std::vector<bool>> solution = find_basis(Matrix);
-
+  Eigen::Map<
+      Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+      mat(Matrix.data(), num_ones, Matrix.size() / num_ones);
+  std::vector<Eigen::VectorXi> solution = find_basis(mat);
   for (int i = 0; i < solution.size(); ++i) {
-    cpp_int x_value = 1;
-    cpp_int y_value = 1;
+    LongInt x_value = 1;
+    LongInt y_value = 1;
     for (int j = 0; j < num_ones; ++j) {
       if (solution[i][j] == 1) {
         x_value *= mapp[j];
@@ -177,13 +179,13 @@ TestStatus factorization_test(const cpp_int &n) {
     }
     y_value = my_sqrt(S, y_value);
 
-    cpp_int summa = gcd(x_value + y_value, n);
-    cpp_int raznost = gcd(x_value - y_value, n);
-    if (!((summa == 1 || summa == n) || (raznost == 1 || raznost == n))) {
+    LongInt d_1 = gcd(x_value + y_value, n);
+    LongInt d_2 = gcd(x_value - y_value, n);
+    if (!((d_1 == 1 || d_1 == n) || (d_2 == 1 || d_2 == n))) {
       return TestStatus::Composite;
     }
   }
 
-  return TestStatus::ProbablyPrime;
+  return TestStatus::Prime;
 }
-}
+} // namespace bpm
