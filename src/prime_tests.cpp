@@ -96,6 +96,9 @@ TestStatus miller_rabin_test(const LongInt &n, const LongInt &k) {
 }
 
 TestStatus aks_test(LongInt n) {
+  if (n > LongInt("1000000000000000000000000000000000000000000000000000000000000")) {
+    throw std::invalid_argument("Число для провери слишком большое");
+  }
   if (n == 1) {
     return TestStatus::Composite;
   }
@@ -122,6 +125,9 @@ TestStatus aks_test(LongInt n) {
 }
 
 TestStatus factorization_test(const LongInt &n) {
+  if (n > LongInt("1000000000000000000000000000000")) {
+    throw std::invalid_argument("Число для провери слишком большое");
+  }
   if (n == 1) {
     return TestStatus::Composite;
   }

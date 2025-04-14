@@ -156,7 +156,9 @@ std::vector<LongInt> compute_args(LongDouble n) {
   return args;
 }
 
-void creating_objects(std::unordered_map<LongInt, LongInt>& f, std::unordered_map<LongInt, std::vector<bool>>& vec_fact, LongInt A, LongInt T, LongInt n, int m) {
+void creating_objects(std::unordered_map<LongInt, LongInt> &f,
+                      std::unordered_map<LongInt, std::vector<bool>> &vec_fact,
+                      LongInt A, LongInt T, LongInt n, int m) {
   for (LongInt i = 0; i < A; ++i) {
     LongInt x = T + i;
     f[x] = x * x - n;

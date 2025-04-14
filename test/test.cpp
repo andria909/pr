@@ -7,7 +7,7 @@ TEST(FermatTest, PrimeNumbers) {
   for (int i = 0; i < primes.size(); ++i) {
     for (int j = 0; j < primes[i].size(); ++j) {
       try {
-        EXPECT_EQ(ferma_test(primes[i][j], 100),
+        EXPECT_EQ(ferma_test(primes[i][j], 2 * i + 1),
                   TestStatus::ProbablyPrime);
       } catch (...) {
         std::cout << "ferma test faled " << primes[i][j] << std::endl;
@@ -73,8 +73,7 @@ TEST(SolovayStrassenTest, PrimeNumbers) {
       EXPECT_EQ(solovay_shtressen_test(big_primes[i], 1000),
                 TestStatus::ProbablyPrime);
     } catch (...) {
-      std::cout << "solovay-strassen test faled " << big_primes[i] <<
-      std::endl;
+      std::cout << "solovay-strassen test faled " << big_primes[i] << std::endl;
     }
   }
 }
@@ -132,8 +131,7 @@ TEST(MillerRabinTest, CompositeNumbers) {
         EXPECT_EQ(miller_rabin_test(composite[i][j], 2 * i + 1),
                   TestStatus::Composite);
       } catch (...) {
-        std::cout << "miller-rabin test faled " << composite[i][j] <<
-        std::endl;
+        std::cout << "miller-rabin test faled " << composite[i][j] << std::endl;
       }
     }
   }
@@ -143,8 +141,7 @@ TEST(MillerRabinTest, CompositeNumbers) {
       EXPECT_EQ(miller_rabin_test(big_composite[i], 1000),
                 TestStatus::Composite);
     } catch (...) {
-      std::cout << "miller-rabin test faled " << big_composite[i] <<
-      std::endl;
+      std::cout << "miller-rabin test faled " << big_composite[i] << std::endl;
     }
   }
 }
@@ -200,14 +197,13 @@ TEST(FactorizationTest, PrimeNumbers) {
     }
   }
 
-    for (int i = 0; i < big_primes.size(); ++i) {
-      try {
-        EXPECT_EQ(factorization_test(big_primes[i]), TestStatus::Prime);
-      } catch (...) {
-        std::cout << "factorization test faled " << big_primes[i] <<
-        std::endl;
-      }
+  for (int i = 0; i < big_primes.size(); ++i) {
+    try {
+      EXPECT_EQ(factorization_test(big_primes[i]), TestStatus::Prime);
+    } catch (...) {
+      std::cout << "factorization test faled " << big_primes[i] << std::endl;
     }
+  }
 }
 
 TEST(FactorizationTest, CompositeNumbers) {
@@ -226,8 +222,7 @@ TEST(FactorizationTest, CompositeNumbers) {
     try {
       EXPECT_EQ(factorization_test(big_composite[i]), TestStatus::Composite);
     } catch (...) {
-      std::cout << "factorization test faled " << big_composite[i] <<
-      std::endl;
+      std::cout << "factorization test faled " << big_composite[i] << std::endl;
     }
   }
 }
